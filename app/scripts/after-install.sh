@@ -2,6 +2,7 @@
 
 cd /srv
 
+cp resources/docker/site.conf /etc/nginx/conf.d/00-site.conf
 cfnStatus=$(cat /usr/local/etc/cfn-finish)
 
 if [[ "$cfnStatus" == "ready" ]]; then
