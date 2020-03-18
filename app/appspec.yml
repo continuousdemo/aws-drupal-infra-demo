@@ -9,12 +9,12 @@ permissions:
     group: "ubuntu"
 hooks:
   BeforeInstall:
-    - location: codedeploy/before-install.sh
+    - location: scripts/before-install.sh
       timeout: 60
   AfterInstall:
-    - location: codedeploy/after-install.sh
+    - location: scripts/after-install.sh
       timeout: 60
   ApplicationStart:
-    - location: codedeploy/application-start.sh
+    - location: scripts/application-start.sh
       timeout: 60
       runas: root
