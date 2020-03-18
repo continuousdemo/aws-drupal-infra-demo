@@ -1,6 +1,7 @@
 #!/bin/bash
 
-if [ -z "$CPHP_PR_ID"];
+if [ -z "$CPHP_PR_ID"]
+then
   appName=EphemeralDrupalDemo
 else
   appName=EphemeralDrupalDemo-$CPHP_PR_ID
