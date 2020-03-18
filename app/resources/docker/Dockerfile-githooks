@@ -1,0 +1,3 @@
+FROM busybox
+
+ENTRYPOINT sh -c "cd /tmp/hooks && ls | xargs chmod +x && cd /tmp/.git/hooks && find ../hooks -type f -exec cp -fp {} /tmp/.git/hooks/ \; && echo 'githooks installed' && exit 0"

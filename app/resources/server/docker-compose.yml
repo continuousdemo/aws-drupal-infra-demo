@@ -1,0 +1,105 @@
+version: '3.3'
+services:
+  portainer:
+    image: portainer/portainer
+    networks:
+      - web
+    command: --no-auth -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - 'traefik.backend=portainer'
+      - 'traefik.port=9000'
+      - 'traefik.frontend.rule=Host:portainer.reea'
+
+  mysql:
+    image: mysql:5
+    command: --max_allowed_packet=32505856
+    networks:
+      - web
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+    volumes:
+      - ./db_data:/var/lib/mysql
+#      - db_data:/var/lib/mysql
+# [..]var/www:cached
+# [..]root:ro -> read-only
+    labels:
+      - 'traefik.backend=mysql'
+      - 'traefik.port=3306'
+      - 'traefik.frontend.rule=Host:mysql.reea'
+
+  solr:
+    image: wodby/drupal-solr:8-7.1
+    networks:
+      - web
+    labels:
+      - 'traefik.backend=solr'
+      - 'traefik.port=8983'
+      - 'traefik.frontend.rule=Host:solr.reea'
+    volumes:
+      - solr:/opt/solr/server/solr
+
+  adminer:
+    image: wodby/adminer:latest
+    networks:
+      - web
+    labels:
+      - 'traefik.backend=adminer'
+      - 'traefik.port=9000'
+      - 'traefik.frontend.rule=Host:adminer.reea'
+    environment:
+      ADMINER_SALT: adminer-salt
+      ADMINER_DB_HOST: 172.16.128.19
+      ADMINER_DB_USER: devel
+
+  pma:
+    image: phpmyadmin/phpmyadmin
+    networks:
+      - web
+    environment:
+      PMA_HOSTS: mysql,172.16.8.40
+      PMA_VERBOSES: localhost,dreeam
+      PHP_UPLOAD_MAX_FILESIZE: 1G
+      PHP_MAX_INPUT_VARS: 1G
+    labels:
+      - 'traefik.backend=pma'
+      - 'traefik.port=80'
+      - 'traefik.frontend.rule=Host:phpmyadmin.reea'
+
+  mailcatcher:
+    image: schickling/mailcatcher
+    networks:
+      - web
+    ports:
+      - "1025:1025"
+    labels:
+      - 'traefik.backend=mail'
+      - 'traefik.port=1080'
+      - 'traefik.frontend.rule=Host:mail.reea'
+
+  traefik:
+    image: traefik
+    networks:
+      - web
+    command: --web --api --docker --logLevel=INFO
+    ports:
+      - "80:80"     # The HTTP port
+    labels:
+      - 'traefik.backend=traefik'
+      - 'traefik.port=8080'
+      - 'traefik.frontend.rule=Host:traefik.reea'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  solr:
+    driver: "local"
+#  db_data:
+#    driver: "local"
+
+networks:
+  web:
+    driver: bridge

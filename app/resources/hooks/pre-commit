@@ -1,0 +1,95 @@
+#!/bin/bash
+
+echo
+echo "==========================================="
+echo "Checking commit message..."
+echo
+
+# regex to validate in commit msg
+commit_regex='(#[0-9]+.+|[mM]erge)'
+error_msg="Aborting commit. Please provide a Redmine issue id ( Ex: #654321 )"
+
+if ! grep -iqEs "$commit_regex" "$0"
+then
+    echo "$error_msg" >&2
+    exit 1
+else
+    echo "Commit message OK."
+fi
+
+echo
+echo "==========================================="
+echo
+echo "==========================================="
+echo "Running PHP Code Sniffer..."
+echo
+
+COMPOSE="docker-compose exec -T "
+
+STAGED_FILES=`git diff --cached --name-only --diff-filter=ACMR HEAD | grep -E ".*\.(php|module|inc|install|test|profile|theme|css|info|txt|md)$"`
+
+cd docker
+
+# Determine if a file list is passed
+if [ "$#" -eq 1 ]
+then
+	oIFS=$IFS
+	IFS='
+	'
+	SFILES="$1"
+	IFS=$oIFS
+fi
+SFILES=${SFILES:-$STAGED_FILES}
+
+if [ -n "$SFILES" ]
+then
+    echo "Checking PHP Lint..."
+
+    for FILE in $SFILES
+    do
+        $COMPOSE php php -l -d display_errors=0 ${FILE#*/}
+        if [ $? != 0 ]
+        then
+            echo "Fix the error before commit."
+            exit 1
+        fi
+        FILES="$FILES ${FILE#*/}"
+    done
+
+    if [ "$FILES" != "" ]
+    then
+        echo "Running Code Sniffer..."
+        $COMPOSE php phpcs --standard=Drupal --extensions='php,module,inc,install,test,profile,theme,css,info,txt,md' $FILES
+        if [ $? != 0 ]
+        then
+            echo "==========================================="
+            echo "Found some errors, trying to fix them automatically using phpcbf..."
+            $COMPOSE php phpcbf --standard=Drupal --extensions='php,module,inc,install,test,profile,theme,css,info,txt,md' $FILES
+
+            cd ..
+            git add $SFILES
+            cd docker
+
+            echo "==========================================="
+            echo "Fixed some errors using phpcbf, checking for errors left..."
+            $COMPOSE php phpcs --standard=Drupal --extensions='php,module,inc,install,test,profile,theme,css,info,txt,md' $FILES
+            if [ $? != 0 ]
+            then
+                echo "Were not able to fix all the error(s) automatically. Fix the error(s) manually before commit."
+                echo "==========================================="
+                exit 1
+            else
+                echo "Were able to fix all the error(s) automatically."
+                echo "==========================================="
+            fi
+        else
+            echo "PHP Code Sniffer was executed successfully."
+            echo "==========================================="
+        fi
+    fi
+else
+    echo "Nothing staged to verify..."
+    echo "==========================================="
+fi
+
+exit 0

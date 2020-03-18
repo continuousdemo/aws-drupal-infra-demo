@@ -1,0 +1,46 @@
+version: '3.3'
+services:
+  web:
+    image: nginx:latest
+    networks:
+      - web
+    volumes:
+      - ../..:/srv
+      - ./site.conf:/etc/nginx/conf.d/00-site.conf
+    labels:
+      - 'traefik.port=80'
+      - 'traefik.backend=demo'
+      - 'traefik.frontend.rule=Host:demo.continuous'
+    links:
+      - php
+
+  php:
+    build:
+      context: ./php
+      args:
+        XDEBUG_HOST: "172.17.0.1"
+    environment:
+      COMPOSER_ALLOW_SUPERUSER: 1
+    networks:
+      - web
+    volumes:
+      - ../..:/srv
+      - .git:/tmp/.git
+
+  selenium:
+    image: selenium/standalone-chrome:3.4.0
+    environment:
+      - JAVA_ENV="-Xms1g -Xmx4g"
+    shm_size: 256M
+    expose:
+      - 4444
+      - 9625
+    networks:
+      - web
+    labels:
+      traefik.enable: "false"
+
+networks:
+  web:
+    external:
+      name: projects_web

@@ -1,0 +1,20 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /var/app/
+permissions:
+  - object: /var/app/
+    owner: "ubuntu"
+    group: "ubuntu"
+hooks:
+  BeforeInstall:
+    - location: codedeploy/before-install.sh
+      timeout: 60
+  AfterInstall:
+    - location: codedeploy/after-install.sh
+      timeout: 60
+  ApplicationStart:
+    - location: codedeploy/application-start.sh
+      timeout: 60
+      runas: root

@@ -203,7 +203,7 @@ Resources:
             ########################################
 
             sudo apt-get update
-            sudo apt-get -y install wget python-setuptools ruby python-pip php7.2-cli php7.2-fpm
+            sudo apt-get -y install wget python-setuptools ruby python-pip php7.2-cli php7.2-fpm nginx
             pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
 
             wget https://aws-codedeploy-eu-west-1.s3.amazonaws.com/latest/install
@@ -229,8 +229,8 @@ Resources:
     Properties:
       ApplicationName: !If [
         hasPrId,
-        !Sub "EphemeralDemoApp-${PrId}",
-        !Sub "EphemeralDemoApp"
+        !Sub "EphemeralDrupalDemo-${PrId}",
+        !Sub "EphemeralDrupalDemo"
       ]
 
   DeploymentGroup:
@@ -238,16 +238,16 @@ Resources:
     Properties:
       ApplicationName: !If [
         hasPrId,
-        !Sub "EphemeralDemoApp-${PrId}",
-        !Sub "EphemeralDemoApp"
+        !Sub "EphemeralDrupalDemo-${PrId}",
+        !Sub "EphemeralDrupalDemo"
       ]
       Ec2TagFilters:
         - Type: KEY_AND_VALUE
           Key: Name
           Value: !If [
             hasPrId,
-            !Sub "EphemeralDemoApp-${PrId}",
-            !Sub "EphemeralDemoApp"
+            !Sub "EphemeralDrupalDemo-${PrId}",
+            !Sub "EphemeralDrupalDemo"
           ]
       DeploymentConfigName: 'CodeDeployDefault.AllAtOnce'
       DeploymentGroupName: 'app'
