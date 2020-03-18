@@ -1,10 +1,17 @@
 #!/bin/bash
+
+if [ -z "$CPHP_PR_ID"];
+  appName=EphemeralDrupalDemo
+else
+  appName=EphemeralDrupalDemo-$CPHP_PR_ID
+fi
+
 aws --profile $Profile \
   s3 cp $PACKAGE_PATH s3://$PackageBucket/$CPHP_GIT_COMMIT.tar.gz
 
 deploymentId=`aws --region $Region --profile $Profile \
   deploy create-deployment \
-    --application-name EphemeralDrupalDemo-$CPHP_PR_ID \
+    --application-name $appName \
     --s3-location bucket=$PackageBucket,key=$CPHP_GIT_COMMIT.tar.gz,bundleType=tgz \
     --deployment-group-name app \
     --description "Deployment app related to commit $CPHP_GIT_COMMIT" \
