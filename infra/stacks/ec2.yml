@@ -204,7 +204,7 @@ Resources:
 
             apt-get update
             apt-get -y install wget python-setuptools ruby python-pip php7.2-cli php7.2-fpm php7.2-bz2 php7.2-curl  php7.2-gd php7.2-intl php7.2-mbstring php7.2-mysql php7.2-xml php7.2-zip php7.2-xsl nginx mysql-server
-            pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz`
+            pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
 
             mysqladmin -u root password 123456
             echo "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456'" | mysql -p -u root -p123456
