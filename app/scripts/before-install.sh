@@ -11,5 +11,10 @@ then
   pkill -F /var/run/app.pid
 fi
 
+if [ -f /srv/web/sites/default/settings.php ]
+then
+  cp /srv/web/sites/default/settings.php /usr/local/src/settings.php
+fi
+
 rm -rf /srv
 mkdir -p /srv/logs

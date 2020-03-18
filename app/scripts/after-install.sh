@@ -2,6 +2,11 @@
 
 cd /srv
 
+if [ -f /usr/local/src/settings.php ]
+then
+  cp /usr/local/src/settings.php /srv/web/sites/default/settings.php
+fi
+
 cp resources/docker/site.conf /etc/nginx/sites-available/default
 cfnStatus=$(cat /usr/local/etc/cfn-finish)
 
