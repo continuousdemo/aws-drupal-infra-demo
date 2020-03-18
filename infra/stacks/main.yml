@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: VPC Resources
+
+Parameters:
+  BaseDomain:
+    Type: String
+    Description: "Base Domain Name"
+  PrId:
+    Type: String
+    Description: "PullRequest ID"
+  KeyPair:
+    Type: String
+    Description: "Keyname EC2"
+  DeployPackagesBucket:
+    Type: String
+    Description: "Packages Bucket"
+  AmiId:
+    Type: String
+    Description: "Amazon Linux Image"
+
+Resources:
+  VpcStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: vpc.yml
+      TimeoutInMinutes: 20
+
+  AppStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ec2.yml
+      TimeoutInMinutes: 20
+      Parameters:
+        Vpc: !GetAtt VpcStack.Outputs.Vpc
+        Subnet: !GetAtt VpcStack.Outputs.PublicSubnets
+        KeyName: !Ref KeyPair
+        AmiId: !Ref AmiId
+        DeployPackagesBucket: !Ref DeployPackagesBucket
+        BaseDomain: !Ref BaseDomain
+        PrId: !Ref PrId

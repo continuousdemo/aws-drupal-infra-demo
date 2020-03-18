@@ -1,0 +1,24 @@
+default:
+  suites:
+    default:
+      contexts:
+        - Drupal\DrupalExtension\Context\DrupalContext
+        - FeatureContext
+        - Drupal\DrupalExtension\Context\MinkContext
+        - Drupal\DrupalExtension\Context\MessageContext
+        - Drupal\DrupalExtension\Context\DrushContext
+  formatters:
+    progress: true
+  extensions:
+    Behat\MinkExtension:
+      goutte: ~
+      javascript_session: selenium2
+      selenium2:
+        wd_host: http://selenium:4444/wd/hub
+      browser_name: chrome
+      base_url: http://apache24/
+    Drupal\DrupalExtension:
+      blackbox: ~
+      api_driver: 'drupal'
+      drupal:
+        drupal_root: './web'

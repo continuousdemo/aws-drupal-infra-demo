@@ -1,0 +1,7 @@
+custom_unit_tests.example:
+  path: '/custom-unit-tests/example'
+  defaults:
+    _title: 'Example'
+    _controller: '\Drupal\custom_unit_tests\Controller\CustomUnitTestsController::build'
+  requirements:
+    _permission: 'access content'

@@ -1,0 +1,268 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "EC2 Resource"
+
+Parameters:
+  Vpc:
+    Description: "VPC identifier."
+    Type: String
+  Subnet:
+    Description: "VPC Subnet"
+    Type: AWS::EC2::Subnet::Id
+  KeyName:
+    Description: "The EC2 Key Pair to allow Remote Desktop access or SSH to the instances."
+    Type: AWS::EC2::KeyPair::KeyName
+  AmiId:
+    Description: "AMI id for Bastion server."
+    Type: AWS::EC2::Image::Id
+  SecurityGroups:
+    Description: "List of Security Groups separate by comma"
+    Type: String
+    Default: ""
+  DeployPackagesBucket:
+    Type: String
+    Description: "Bucket for applications packages"
+  BaseDomain:
+    Type: String
+    Description: "Base Domain Name"
+  PrId:
+    Type: String
+    Description: "PullRequest ID"
+
+Conditions:
+  hasSecurityGroups: !Not [ !Equals [ !Ref SecurityGroups, "" ]  ]
+  hasPrId: !Not [ !Equals [ !Ref PrId, "" ]  ]
+
+Resources:
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:DescribeAlarmHistory
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:DescribeAlarmsForMetric
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:PutMetricData
+                  - ec2:DescribeTags
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: "*"
+        - PolicyName: CodeDeploy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - autoscaling:Describe*
+                  - autoscaling:EnterStandby
+                  - autoscaling:ExitStandby
+                  - cloudformation:Describe*
+                  - cloudformation:GetTemplate
+                Resource: "*"
+              - Action:
+                  - s3:GetObject
+                Effect: Allow
+                Resource:
+                  - !Sub "arn:aws:s3:::${DeployPackagesBucket}/*"
+
+  DeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/deployment/"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "code-deploy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - autoscaling:CompleteLifecycleAction
+                  - autoscaling:DeleteLifecycleHook
+                  - autoscaling:DescribeAutoScalingGroups
+                  - autoscaling:DescribeLifecycleHooks
+                  - autoscaling:PutLifecycleHook
+                  - autoscaling:RecordLifecycleActionHeartbeat
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceStatus
+                  - tag:GetTags
+                  - tag:GetResources
+                Resource: "*"
+
+  Profile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref Role
+
+  WaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  WaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    Properties:
+      Handle: !Ref WaitHandle
+      Timeout: 600
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "EC2 Security Group"
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          default:
+            - prepare
+        prepare:
+          files:
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackName}
+                interval=1
+                region=${AWS::Region}
+              mode: 000400
+              owner: root
+              group: root
+
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -s ${AWS::StackName} -r Instance --region ${AWS::Region}
+                runas=root
+              mode: 000400
+              owner: root
+              group: root
+    Properties:
+      InstanceType: t2.nano
+      KeyName: !Ref KeyName
+      ImageId: !Ref AmiId
+      IamInstanceProfile: !Ref Profile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          GroupSet: !If [
+            hasSecurityGroups,
+            !Split [ ',', !Sub "${SecurityGroup},${SecurityGroups}" ],
+            !Split [ ',', !Sub "${SecurityGroup}" ]
+          ]
+          SubnetId: !Ref Subnet
+      Tags:
+        - Key: Name
+          Value: !If [
+            hasPrId,
+            !Sub "EphemeralDrupal-${PrId}",
+            !Sub "EphemeralDrupal"
+          ]
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -v
+            ########################################
+            ## CloudFormation Instances Bootstrap ##
+            ########################################
+
+            sudo apt-get update
+            sudo apt-get -y install wget python-setuptools ruby python-pip php7.2-cli php7.2-fpm
+            pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+
+            wget https://aws-codedeploy-eu-west-1.s3.amazonaws.com/latest/install
+            chmod +x ./install
+            ./install auto
+            service codedeploy-agent start
+
+            # Helper function
+            function error_exit
+            {
+              cfn-signal -e 1 -r "$1" '${WaitHandle}'
+              exit 1
+            }
+
+            ln -sf /usr/share/zoneinfo/Europe/Paris /etc/localtime
+            mkdir -p /var/app
+            echo "ready" > /usr/local/etc/cfn-finish
+
+            cfn-signal -e 0 -r 'Stack Complete.' '${WaitHandle}'
+
+  Application:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !If [
+        hasPrId,
+        !Sub "EphemeralDemoApp-${PrId}",
+        !Sub "EphemeralDemoApp"
+      ]
+
+  DeploymentGroup:
+    Type: 'AWS::CodeDeploy::DeploymentGroup'
+    Properties:
+      ApplicationName: !If [
+        hasPrId,
+        !Sub "EphemeralDemoApp-${PrId}",
+        !Sub "EphemeralDemoApp"
+      ]
+      Ec2TagFilters:
+        - Type: KEY_AND_VALUE
+          Key: Name
+          Value: !If [
+            hasPrId,
+            !Sub "EphemeralDemoApp-${PrId}",
+            !Sub "EphemeralDemoApp"
+          ]
+      DeploymentConfigName: 'CodeDeployDefault.AllAtOnce'
+      DeploymentGroupName: 'app'
+      ServiceRoleArn: !GetAtt DeployerRole.Arn
+
+  RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub "${BaseDomain}."
+      Name: !If [
+        hasPrId,
+        !Sub "${PrId}.demo-ephemeral-drupal.${BaseDomain}.",
+        !Sub "demo-ephemeral-drupal.${BaseDomain}."
+      ]
+      Type: A
+      TTL: '900'
+      ResourceRecords:
+        - !GetAtt Instance.PublicIp

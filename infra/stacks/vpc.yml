@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: VPC Resources
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      InstanceTenancy: default
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+
+  Igw:
+    Type: AWS::EC2::InternetGateway
+    Properties: {  }
+
+  GatewayAttachIgw:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref Igw
+
+  DhcpOption:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: "ec2.internal"
+      DomainNameServers:
+        - AmazonProvidedDNS
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref Igw
+    DependsOn: GatewayAttachIgw
+
+  PublicSubnetAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicInSubnetAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetAcl
+      RuleNumber: "32000"
+      Protocol: "-1"
+      RuleAction: allow
+      Egress: "false"
+      CidrBlock: 0.0.0.0/0
+      Icmp:
+        Code: "-1"
+        Type: "-1"
+      PortRange:
+        From: "1"
+        To: "65535"
+
+  PublicOutSubnetAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PublicSubnetAcl
+      RuleNumber: "32000"
+      Protocol: "-1"
+      RuleAction: allow
+      Egress: "true"
+      CidrBlock: 0.0.0.0/0
+      Icmp:
+        Code: "-1"
+        Type: "-1"
+      PortRange:
+        From: "1"
+        To: "65535"
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Sub "10.0.0.0/24"
+      VpcId: !Ref Vpc
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      Tags:
+        -
+          Key: network
+          Value: public
+        -
+          Key: Name
+          Value: !Sub "subnet-public-0"
+
+  PublicSubnetAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      NetworkAclId: !Ref PublicSubnetAcl
+
+  PublicRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+Outputs:
+  Vpc:
+    Description: VPC
+    Value: !Ref Vpc
+
+  AvailabilityZones:
+    Description: "Availability zones actually used"
+    Value:
+      Fn::Select:
+        - 0
+        - Fn::GetAZs: ""
+
+  PublicSubnets:
+    Description: Public Subnets
+    Value: !Join [ ", ", [
+      !Ref PublicSubnet
+    ] ]

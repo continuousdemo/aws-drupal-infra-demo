@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://schema.phpunit.de/4.1/phpunit.xsd"
+         backupGlobals="false"
+         colors="true"
+         bootstrap="./web/core/tests/bootstrap.php"
+         verbose="true"
+        >
+    <testsuites>
+        <testsuite name="drupal-composer-project tests">
+            <directory>./web/modules/custom/**/tests/</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+      <whitelist processUncoveredFilesFromWhitelist="true">
+        <directory>./web/modules/custom/**/src</directory>
+        <exclude>
+          <directory>./web/modules/custom/**/src/Controller/</directory>
+        </exclude>
+      </whitelist>
+    </filter>
+</phpunit>

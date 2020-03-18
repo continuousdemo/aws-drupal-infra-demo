@@ -1,0 +1,4 @@
+administer custom_unit_tests configuration:
+  title: 'Administer custom_unit_tests configuration'
+  description: 'Optional description.'
+  restrict access: true
