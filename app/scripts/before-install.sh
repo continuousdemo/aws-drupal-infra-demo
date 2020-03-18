@@ -11,5 +11,5 @@ then
   pkill -F /var/run/app.pid
 fi
 
-rm -rf /var/app
-mkdir /var/app
+rm -rf /srv
+mkdir -p /srv

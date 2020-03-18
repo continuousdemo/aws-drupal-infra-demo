@@ -174,7 +174,7 @@ Resources:
               owner: root
               group: root
     Properties:
-      InstanceType: t2.nano
+      InstanceType: t3.medium
       KeyName: !Ref KeyName
       ImageId: !Ref AmiId
       IamInstanceProfile: !Ref Profile
@@ -191,8 +191,8 @@ Resources:
         - Key: Name
           Value: !If [
             hasPrId,
-            !Sub "EphemeralDrupal-${PrId}",
-            !Sub "EphemeralDrupal"
+            !Sub "EphemeralDrupalDemo-${PrId}",
+            !Sub "EphemeralDrupalDemo"
           ]
       UserData:
         "Fn::Base64":
@@ -202,9 +202,16 @@ Resources:
             ## CloudFormation Instances Bootstrap ##
             ########################################
 
-            sudo apt-get update
-            sudo apt-get -y install wget python-setuptools ruby python-pip php7.2-cli php7.2-fpm nginx
-            pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+            apt-get update
+            apt-get -y install wget python-setuptools ruby python-pip php7.2-cli php7.2-fpm php7.2-bz2 php7.2-curl  php7.2-gd php7.2-intl php7.2-mbstring php7.2-mysql php7.2-xml php7.2-zip php7.2-xsl nginx mysql-server
+            pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz`
+
+            mysqladmin -u root password 123456
+            echo "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456'" | mysql -p -u root -p123456
+            echo "bind-address = localhost" >> /etc/mysql/conf.d/mysql.cnf
+            echo "127.0.0.1 php" >> /etc/hosts
+            sed -i 's#listen = /run/php/php7.2-fpm.sock#listen = 127.0.0.1:9000#' /etc/php/7.2/fpm/pool.d/www.conf
+            service php7.2-fpm restart
 
             wget https://aws-codedeploy-eu-west-1.s3.amazonaws.com/latest/install
             chmod +x ./install

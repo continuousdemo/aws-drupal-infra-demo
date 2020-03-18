@@ -2,11 +2,11 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /var/app/
+    destination: /srv/
 permissions:
-  - object: /var/app/
-    owner: "ubuntu"
-    group: "ubuntu"
+  - object: /srv/
+    owner: "www-data"
+    group: "www-data"
 hooks:
   BeforeInstall:
     - location: scripts/before-install.sh
