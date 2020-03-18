@@ -12,4 +12,4 @@ then
 fi
 
 rm -rf /srv
-mkdir -p /srv
+mkdir -p /srv/logs
